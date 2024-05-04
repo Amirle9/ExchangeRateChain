@@ -18,17 +18,17 @@ namespace Tests
                 Rates = new Dictionary<string, decimal> { { "EUR", 0.85m } }
             };
 
-            var memoryStorageMock = new Mock<IStorage<ExchangeRateList>>();
+            var memoryStorageMock = new Mock<IReadableStorage<ExchangeRateList>>();
             memoryStorageMock.Setup(m => m.GetDataAsync())
                              .ReturnsAsync(exchangeRateList);
             // Simulating that the data was just fetched, thus not expired.
             memoryStorageMock.Setup(m => m.LastFetchTime)
-                             .Returns(DateTime.Now);
+                             .Returns(DateTime.UtcNow);
             // Setting the expiration time to 1 hour from now.
             memoryStorageMock.Setup(m => m.Expiration)
                              .Returns(TimeSpan.FromHours(1));
             // Adding our mock memory storage to a list, to be passed to the ChainResource constructor.
-            var storages = new List<IStorage<ExchangeRateList>> { memoryStorageMock.Object };
+            var storages = new List<IReadableStorage<ExchangeRateList>> { memoryStorageMock.Object };
             var chainResource = new ChainResource<ExchangeRateList>(storages);
 
 
@@ -40,7 +40,8 @@ namespace Tests
             // Assert
             Assert.NotNull(result);             // Verify that the result is not null, meaning data was retrieved successfully.
             Assert.Equal("USD", result.Base);   // Verify that the base currency is as expected, confirming the correct data was retrieved.
-            memoryStorageMock.Verify(m => m.GetDataAsync(), Times.Once);    // Ensure that the GetDataAsync method on the mock memory storage was called exactly once.
+            memoryStorageMock.Verify(m => m.GetDataAsync(), Times.Once);    // Ensure that the GetDataAsync method on the mock
+                                                                            // memory storage was called exactly once.
         }
 
         // Test that GetValueAsync retrieves data from a secondary storage when the first storage's data has expired.
@@ -54,19 +55,19 @@ namespace Tests
                 Rates = new Dictionary<string, decimal> { { "EUR", 0.85m } }
             };
 
-            var memoryStorageMock = new Mock<IStorage<ExchangeRateList>>();
+            var memoryStorageMock = new Mock<IReadableStorage<ExchangeRateList>>();
             memoryStorageMock.Setup(m => m.GetDataAsync()).ReturnsAsync(default(ExchangeRateList));
-            memoryStorageMock.Setup(m => m.LastFetchTime).Returns(DateTime.Now.Subtract(TimeSpan.FromHours(2)));
-            memoryStorageMock.Setup(m => m.ShouldCheckExpiration).Returns(true);
+            memoryStorageMock.Setup(m => m.LastFetchTime).Returns(DateTime.UtcNow.Subtract(TimeSpan.FromHours(2)));
+            memoryStorageMock.Setup(m => m.IsReadOnly).Returns(false);
             memoryStorageMock.Setup(m => m.Expiration).Returns(TimeSpan.FromHours(1));
 
-            var fileSystemStorageMock = new Mock<IStorage<ExchangeRateList>>();
+            var fileSystemStorageMock = new Mock<IReadableStorage<ExchangeRateList>>();
             fileSystemStorageMock.Setup(m => m.GetDataAsync()).ReturnsAsync(exchangeRateList);
-            fileSystemStorageMock.Setup(m => m.LastFetchTime).Returns(DateTime.Now);
-            fileSystemStorageMock.Setup(m => m.ShouldCheckExpiration).Returns(true);
+            fileSystemStorageMock.Setup(m => m.LastFetchTime).Returns(DateTime.UtcNow);
+            fileSystemStorageMock.Setup(m => m.IsReadOnly).Returns(false);
             fileSystemStorageMock.Setup(m => m.Expiration).Returns(TimeSpan.FromHours(4));
 
-            var storages = new List<IStorage<ExchangeRateList>> { memoryStorageMock.Object, fileSystemStorageMock.Object };
+            var storages = new List<IReadableStorage<ExchangeRateList>> { memoryStorageMock.Object, fileSystemStorageMock.Object };
             var chainResource = new ChainResource<ExchangeRateList>(storages);
 
 
@@ -95,27 +96,24 @@ namespace Tests
                 Rates = new Dictionary<string, decimal> { { "GBP", 0.75m } }
             };
 
-            var memoryStorageMock = new Mock<IStorage<ExchangeRateList>>();
+            var memoryStorageMock = new Mock<IReadableStorage<ExchangeRateList>>();
             memoryStorageMock.Setup(m => m.GetDataAsync()).ReturnsAsync(default(ExchangeRateList));
             memoryStorageMock.Setup(m => m.Expiration).Returns(TimeSpan.FromHours(1));
             memoryStorageMock.Setup(m => m.IsReadOnly).Returns(false);
-            memoryStorageMock.Setup(m => m.ShouldCheckExpiration).Returns(true); 
-            memoryStorageMock.SetupProperty(m => m.LastFetchTime, DateTime.Now.Subtract(TimeSpan.FromHours(2)));
+            memoryStorageMock.SetupProperty(m => m.LastFetchTime, DateTime.UtcNow.Subtract(TimeSpan.FromHours(2)));
 
-            var fileSystemStorageMock = new Mock<IStorage<ExchangeRateList>>();
+            var fileSystemStorageMock = new Mock<IReadableStorage<ExchangeRateList>>();
             fileSystemStorageMock.Setup(m => m.GetDataAsync()).ReturnsAsync(default(ExchangeRateList));
             fileSystemStorageMock.Setup(m => m.Expiration).Returns(TimeSpan.FromHours(4));
             fileSystemStorageMock.Setup(m => m.IsReadOnly).Returns(false);
-            fileSystemStorageMock.Setup(m => m.ShouldCheckExpiration).Returns(true); 
-            fileSystemStorageMock.SetupProperty(m => m.LastFetchTime, DateTime.Now.Subtract(TimeSpan.FromHours(5)));
+            fileSystemStorageMock.SetupProperty(m => m.LastFetchTime, DateTime.UtcNow.Subtract(TimeSpan.FromHours(5)));
 
-            var webServiceStorageMock = new Mock<IStorage<ExchangeRateList>>();
+            var webServiceStorageMock = new Mock<IReadableStorage<ExchangeRateList>>();
             webServiceStorageMock.Setup(m => m.GetDataAsync()).ReturnsAsync(exchangeRateList);
             webServiceStorageMock.Setup(m => m.IsReadOnly).Returns(true);
-            webServiceStorageMock.Setup(m => m.ShouldCheckExpiration).Returns(false); // WebService should not check expiration
-            webServiceStorageMock.SetupProperty(m => m.LastFetchTime, DateTime.Now);
+            webServiceStorageMock.SetupProperty(m => m.LastFetchTime, DateTime.UtcNow);
 
-            var storages = new List<IStorage<ExchangeRateList>>
+            var storages = new List<IReadableStorage<ExchangeRateList>>
                 {
                     memoryStorageMock.Object,
                     fileSystemStorageMock.Object,

@@ -1,14 +1,23 @@
 ﻿
 namespace ExchangeRateChain
 {
-    public class FileSystemStorage<T> : IStorage<T>
+    public class FileSystemStorage<T> : IWritableStorage<T>
     {
-        private readonly string filePath = "exchange_rates.json";
-        public bool IsReadOnly => false;
-        public TimeSpan Expiration { get; } = TimeSpan.FromHours(4);          // The duration after which data should be considered expired.
+        private readonly string filePath;
+        private readonly IDataConverter<T> converter;
 
-        public bool ShouldCheckExpiration => true;
+        public FileSystemStorage(string filePath, IDataConverter<T> converter)
+        {
+            this.filePath = filePath;
+            this.converter = converter;
+        }
+
+        public bool IsReadOnly => false;
+        public TimeSpan Expiration { get; } = TimeSpan.FromHours(4);    // The duration after which data should be considered expired.
+
         public DateTime LastFetchTime { get; set; }
+
+        // Asynchronously retrieves data from the specified file path. Returns default(T) if the file does not exist.
 
         public async Task<T> GetDataAsync()
         {
@@ -17,16 +26,15 @@ namespace ExchangeRateChain
                 return default;
             }
 
-            var json = await File.ReadAllTextAsync(filePath);
-            return Newtonsoft.Json.JsonConvert.DeserializeObject<T>(json);
+            string data = await File.ReadAllTextAsync(filePath);
+            return converter.Deserialize(data);
         }
 
-        // Asynchronously saves data to a JSON file and updates the last fetch time to reflect the update time.
         public async Task SetDataAsync(T newData)
         {
-            var json = Newtonsoft.Json.JsonConvert.SerializeObject(newData);
-            await File.WriteAllTextAsync(filePath, json);
-            LastFetchTime = DateTime.Now;
+            string data = converter.Serialize(newData);
+            await File.WriteAllTextAsync(filePath, data);
+            LastFetchTime = DateTime.UtcNow;
         }
     }
 

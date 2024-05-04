@@ -6,10 +6,12 @@ namespace ExchangeRateChain
     {
         bool IsReadOnly { get; }
         TimeSpan Expiration { get; }
-        bool ShouldCheckExpiration { get; }
-        DateTime LastFetchTime { get; set; }
-        Task<T> GetDataAsync();
-        Task SetDataAsync(T data);
+        DateTime LastFetchTime { get; set; }   // Property to track the last time data was fetched or updated.
+
+        Task<T> GetDataAsync(); // Method to asynchronously retrieve data of type T from the storage.
+
+        Task SetDataAsync(T data); // Method to asynchronously store data of type T into the storage.
+
     }
 
 }
